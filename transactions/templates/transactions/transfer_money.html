@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block head_title %}{{ title }}{% endblock %}
+{% load crispy_forms_tags %}
+{% block content %}
+
+<div class="w-full flex mt-5 justify-center" >
+    <div class="bg-black-300 w-5/12 rounded-lg bg-slate-300" style="background-color:rgb(99, 114, 249)">
+        <h1 class="font-bold text-3xl text-center pb-5 pt-10 px-5" style="background-color:rgb(218, 230, 242)">Transfer Money</h1>
+        <form method="post" class="px-8 pt-6 pb-8 mb-4 " style="background-color:rgb(218, 230, 242)">
+            {% csrf_token %}
+            {{form | crispy}}
+            <button type="submit" class="mb-10 bg-danger hover:bg-blue-600 text-white font-bold py-2 px-4 rounded" style="background-color:rgb(239, 9, 9)">submit</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

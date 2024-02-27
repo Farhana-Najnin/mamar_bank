@@ -2,15 +2,17 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.utils import timezone
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect,render
 from django.views import View
 from django.http import HttpResponse
 from django.views.generic import CreateView, ListView
-from transactions.constants import DEPOSIT, WITHDRAWAL,LOAN, LOAN_PAID
+from transactions.constants import DEPOSIT, WITHDRAWAL,LOAN, LOAN_PAID ,TRANSFER, RECEIVED
 from django.core.mail import EmailMessage, EmailMultiAlternatives
 from django.template.loader import render_to_string
 from datetime import datetime
 from django.db.models import Sum
+from .forms import paisaTransferForm
+from accounts.models import UserBankAccount
 from transactions.forms import (
     DepositForm,
     WithdrawForm,
@@ -201,3 +203,57 @@ class LoanListView(LoginRequiredMixin,ListView):
         queryset = Transaction.objects.filter(account=user_account,transaction_type=3)
         print(queryset)
         return queryset
+    
+class PaisaTransferView(View):
+    template_name = 'transactions/transfer_money.html'
+    def get(self,request):
+        form = paisaTransferForm
+        return render(request,self.template_name, {'form': form})
+    
+    def post(self,request):
+        form = paisaTransferForm(request.POST)
+        
+        if form.is_valid():
+            amount = form.cleaned_data['amount']
+            to_user_id = form.cleaned_data['to_user_id']
+            print(amount,to_user_id)
+
+            current_user = request.user.account
+            # print(current_user)
+            try:
+                to_user = UserBankAccount.objects.get(account_no = to_user_id)
+                print(to_user)
+
+                current_user.balance-=amount 
+                current_user.save()
+
+                to_user.balance+=amount 
+                to_user.save()
+                Transaction.objects.create(
+                    account = current_user,
+                    amount = amount,
+                    balance_after_transaction = current_user.balance,
+                    transaction_type = TRANSFER 
+                )
+
+                Transaction.objects.create(
+                    account = to_user,
+                    amount = amount,
+                    balance_after_transaction = to_user.balance,
+                    transaction_type = RECEIVED 
+                )
+
+                messages.success(request, "Successfully Money Transferred")
+
+                send_transaction_email(self.request.user,amount,"Money Transfer Messages",'transactions/transfer_email.html')
+                # send_transaction_email(self.request.to_user,amount,"Money Transfer Messages",'transactions/transfer_email.html')
+                
+
+                return redirect('transaction_report')
+            
+            except UserBankAccount.DoesNotExist:
+                messages.error(request,"Invalid User Account!")
+            return render(request,self.template_name, {'form': form, 'title': 'transaction_report'})
+        return render(request, self.template_name, {'form': form, 'title': 'Transfer Money'})
+       
+    
