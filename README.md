@@ -45,75 +45,127 @@ mamar_bank/
 
 ---
 
+
+---
+
 ## 👤 Accounts Module
 
 ### Features
-- User registration using Django’s built-in authentication system
-- Automatic creation of:
+- Registration using Django auth
+- Auto creation of:
   - **Bank Account** (unique account number)
   - **User Address**
 - Login / Logout
 - Profile update (User + Account + Address)
-- Secure password change (session preserved)
+- Password change (session preserved)
 
-### Key Design Choices
-- `OneToOneField` between `User` and `UserBankAccount`
-- `DecimalField` used for monetary values to avoid floating-point errors
-- Server-side validation using Django Forms
+### Key Implementation Notes
+- User ↔ BankAccount uses `OneToOneField` (1 user = 1 account)
+- Monetary data uses `DecimalField` for precision (no float issues)
+- Profile update uses `get_or_create()` to safely handle missing related records
 
 ---
 
 ## 💳 Transactions Module
 
-### Supported Banking Operations
+### Supported Operations
 - **Deposit**
-  - Minimum deposit validation
-  - Balance update + transaction logging
 - **Withdraw**
-  - Minimum & maximum limits
-  - Insufficient balance protection
 - **Loan Request**
-  - Loan request tracking
-  - Approved-loan count limitation
 - **Loan Payment**
-  - Balance validation before repayment
 - **Money Transfer**
-  - Transfer by account number
-  - Sender and receiver transaction records created
-- **Transaction Report**
-  - Full transaction history
-  - Optional date-range filtering
+- **Transaction Report** (with optional date range filter)
 
-### Transaction Design
-Each financial action creates a **Transaction record** containing:
-- Transaction type (Deposit, Withdraw, Loan, Transfer, etc.)
+### Transaction Logging
+Each financial operation creates a **Transaction record** storing:
+- Type (Deposit, Withdraw, Loan, Transfer, etc.)
 - Amount
 - Timestamp
-- Balance snapshot after transaction
+- `balance_after_transaction` snapshot (audit-friendly)
 
-This enables **auditability** and **financial traceability**.
+---
+
+## ✅ Business Logic Implemented (Core Logic)
+
+This section describes the **actual rules and validations** applied in the system.
+
+### 1) Account Creation Logic
+- When a user registers:
+  - A `UserBankAccount` is created
+  - A `UserAddress` is created
+  - Account number is generated programmatically and stored uniquely
+
+### 2) Deposit Logic
+- Deposit amount is validated (server-side)
+- Minimum deposit rule enforced:
+  - **Deposit must be ≥ 100**
+- On success:
+  - `account.balance += amount`
+  - A transaction log is created
+  - Email notification is sent to the user
+
+### 3) Withdrawal Logic
+- Withdrawal is validated (server-side)
+- Rules enforced:
+  - **Minimum withdrawal: 500**
+  - **Maximum withdrawal: 20,000**
+  - **Cannot withdraw more than current balance**
+- On success:
+  - `account.balance -= amount`
+  - A transaction log is created
+  - Email notification is sent
+
+### 4) Loan Request Logic
+- Loan requests are recorded as transactions
+- Loan approval flow includes an approval flag (`loan_approve`)
+- Business rule enforced:
+  - A user cannot exceed **3 approved loans**
+- Email notification is sent for loan request updates
+
+### 5) Loan Payment Logic
+- Loan can be paid only if:
+  - Loan is approved
+  - User has enough balance to repay
+- On success:
+  - User balance decreases by loan amount
+  - Loan transaction status/type is updated for repayment tracking
+
+### 6) Money Transfer Logic
+- Transfer is performed using the receiver’s **account number**
+- On transfer:
+  - Sender balance is decreased
+  - Receiver balance is increased
+  - Two transaction logs are created:
+    - Sender: **TRANSFER**
+    - Receiver: **RECEIVED**
+- Email notification is sent after transfer
+
+### 7) Transaction Report Logic
+- Users can view transaction history
+- Report supports:
+  - Full history listing
+  - Optional filtering by date range (`start_date`, `end_date`)
+  - Summarization of total amounts in a date range
 
 ---
 
 ## 📧 Email Notification System
 
-- Email alerts sent for:
-  - Deposits
-  - Withdrawals
-  - Loan requests / approvals
-  - Transfers
-- SMTP configured using environment variables
-- Credentials stored securely using `.env`
+- SMTP is configured using environment variables (`.env`)
+- Transaction events trigger email alerts such as:
+  - Deposit confirmation
+  - Withdrawal confirmation
+  - Loan request/approval updates
+  - Transfer confirmation
 
 ---
 
 ## ⚙️ Technology Stack
 
 **Backend**
-- Python
-- Django
+- Python, Django
 - Django ORM
-- Django Authentication System
+- Django Authentication
 
 **Database**
 - SQLite (development)
@@ -121,10 +173,10 @@ This enables **auditability** and **financial traceability**.
 
 **Frontend**
 - Django Templates
-- Bootstrap (via Crispy Forms)
+- Bootstrap (Crispy Forms)
 
-**Other Tools**
-- Django Messages Framework
+**Other**
+- Django Messages
 - Email (SMTP)
 - Environment variables using `django-environ`
 
@@ -132,24 +184,20 @@ This enables **auditability** and **financial traceability**.
 
 ## 🔐 Security & Best Practices
 
-- Secrets managed via environment variables (`.env`)
-- CSRF protection enabled
-- Login-protected transaction routes
-- Server-side validation for all financial operations
-- Separation of concerns across apps
+- Secrets managed via `.env`
+- Server-side validation for all financial actions
+- Login protection for transaction operations
+- Clear separation of concerns across apps
 
-> ⚠️ For production:
-> - `DEBUG = False`
+> Production considerations:
+> - Set `DEBUG = False`
 > - Restrict `ALLOWED_HOSTS`
 > - Use PostgreSQL
-> - Use atomic database transactions for money transfer
+> - Use atomic DB transactions for transfers (recommended in fintech)
 
 ---
 
 ## ▶️ Run Locally
-
-
-
 
 ### 1️⃣ Create virtual environment
 ```bash
