@@ -202,48 +202,49 @@ This section describes the **actual rules and validations** applied in the syste
 ### 1️⃣ Create virtual environment
 ```bash
 python -m venv venv
-# Windows:
-venv\Scripts\activate
-# Mac/Linux:
-source venv/bin/activate
-
+```
 ### 2️⃣ Activate environment
+```bash
 # Windows
 venv\Scripts\activate
 
 # Mac/Linux
 source venv/bin/activate
-
+```
 ### 3️⃣ Install dependencies
+```bash
 pip install -r requirements.txt
-
+```
 ### 4️⃣ Configure environment variables
 
 Create a .env file:
-
+```bash
 SECRET_KEY=your_secret_key
 EMAIL_HOST_USER=your_email@gmail.com
 EMAIL_HOST_PASSWORD=your_app_password
-
+```
 ### 5️⃣ Apply migrations
+```bash
 python manage.py makemigrations
 python manage.py migrate
 
-
+```
 ### 6️⃣ Create admin user (optional)
+```bash
 python manage.py createsuperuser
-
+```
 
 ### 7️⃣ Run server
+```bash
 python manage.py runserver
-
+```
 
 Access:
 
 Home → http://127.0.0.1:8000/
 
 Admin → http://127.0.0.1:8000/admin/
-```
+
 ---
 
 
